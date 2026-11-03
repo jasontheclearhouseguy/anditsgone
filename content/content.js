@@ -17,19 +17,32 @@
   if (s.google && isTop) TT_START_GOOGLE_CLEANUP();
 
   // Facebook: the home feed opens on the Friends feed. Other feeds (Feeds > All, Groups)
-  // carry a filter in the URL, so they're left alone. Facebook changes pages without
-  // reloading, so keep checking for a return to the bare home URL.
+  // carry a filter in the URL, so they're left alone. This sets where a tab lands; it
+  // never walls off Home. Only a tab's first arrival at Home is redirected, and never
+  // one that follows a click or key press. After that, Home stays reachable in that
+  // tab, including reloads and back/forward. Facebook changes pages without reloading,
+  // so keep checking until the tab has reached Home once.
   const isFacebook = /^(www\.|web\.)?facebook\.com$/.test(location.hostname);
   if (s.facebook && isTop && isFacebook) {
+    const LANDED = "anditsgone-fb-landed";
+    const landed = () => { try { return sessionStorage.getItem(LANDED) === "1"; } catch { return false; } };
+    const markLanded = () => { try { sessionStorage.setItem(LANDED, "1"); } catch {} };
+    let fbGesture = 0;
+    for (const t of ["pointerdown", "keydown"]) {
+      addEventListener(t, (e) => { if (e.isTrusted) fbGesture = Date.now(); }, true);
+    }
+    let timer = null;
     const toFriends = () => {
-      if (location.pathname === "/" && !location.search) {
-        location.replace("/?filter=friends&sk=h_chr");
-        return true;
-      }
-      return false;
+      if (location.pathname !== "/" || location.search) return false;
+      const redirect = !landed() && Date.now() - fbGesture > 2000;
+      markLanded();
+      if (timer !== null) clearInterval(timer);
+      if (!redirect) return false;
+      location.replace("/?filter=friends&sk=h_chr");
+      return true;
     };
     if (toFriends()) return;
-    setInterval(toFriends, 500);
+    if (!landed()) timer = setInterval(toFriends, 500);
   }
 
   // ---------- CSS ----------

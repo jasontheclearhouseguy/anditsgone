@@ -155,3 +155,77 @@ test("late AI insertion after scrolling cannot collapse the page or jump to its 
     assert.deepEqual(h.errors, []);
   } finally { await h.close(); }
 });
+
+// Facebook: scripts run at the start of every document, as Chrome injects them.
+// Init scripts can run before <html> exists, which Chrome's document_start never
+// does, so page errors are not asserted here. Home is an in-page link, as on Facebook.
+async function facebookTab(context) {
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  return { page, errors };
+}
+async function facebookContext() {
+  const context = await browser.newContext({ viewport: { width: 1100, height: 700 } });
+  await context.route("**/*", route => route.fulfill({ contentType: "text/html", body: "<html><head></head><body><a id='home' href='/' onclick='event.preventDefault(); history.pushState({}, \"\", \"/\")'>Home</a></body></html>" }));
+  await context.addInitScript(() => {
+    window.chrome = { storage: { sync: { get: async () => ({ cookies: false, popups: false, autoplay: false, sticky: false, widgets: false }) } } };
+  });
+  for (const file of ["shared/defaults.js", "content/google.js", "content/content.js"]) {
+    await context.addInitScript({ path: path.join(root, file) });
+  }
+  return context;
+}
+const onFriends = page => new URL(page.url()).searchParams.get("filter") === "friends";
+const onHome = page => { const u = new URL(page.url()); return u.pathname === "/" && !u.search; };
+// Facebook's own in-page navigation, without a click.
+const appNavigate = (page, url) => page.evaluate(url => history.pushState({}, "", url), url);
+
+test("Facebook lands on Friends once per tab, then Home stays reachable", async () => {
+  const context = await facebookContext();
+  try {
+    const { page } = await facebookTab(context);
+    await page.goto("https://www.facebook.com/");
+    await page.waitForURL(/filter=friends/);
+    await appNavigate(page, "/");
+    await page.waitForTimeout(800);
+    assert.equal(onHome(page), true, "in-page return to Home");
+    await page.reload();
+    await page.waitForTimeout(800);
+    assert.equal(onHome(page), true, "reload on Home");
+    const second = await facebookTab(context);
+    await second.page.goto("https://www.facebook.com/");
+    await second.page.waitForURL(/filter=friends/);
+    assert.equal(onFriends(second.page), true, "a new tab lands on Friends");
+  } finally { await context.close(); }
+});
+
+test("after a deep link, a clicked Home is respected but Facebook's own jump to Home lands on Friends", async () => {
+  const context = await facebookContext();
+  try {
+    const clicked = await facebookTab(context);
+    await clicked.page.goto("https://www.facebook.com/some.profile");
+    await clicked.page.click("#home");
+    await clicked.page.waitForTimeout(800);
+    assert.equal(onHome(clicked.page), true, "clicked Home");
+
+    const automatic = await facebookTab(context);
+    await automatic.page.goto("https://www.facebook.com/some.profile");
+    await appNavigate(automatic.page, "/");
+    await automatic.page.waitForURL(/filter=friends/);
+    assert.equal(onFriends(automatic.page), true, "unclicked jump to Home");
+  } finally { await context.close(); }
+});
+
+test("with the Facebook switch off, Home is never redirected", async () => {
+  const context = await browser.newContext();
+  try {
+    await context.route("**/*", route => route.fulfill({ contentType: "text/html", body: "<html><body></body></html>" }));
+    await context.addInitScript(() => { window.chrome = { storage: { sync: { get: async () => ({ facebook: false, cookies: false, popups: false, autoplay: false }) } } }; });
+    for (const file of ["shared/defaults.js", "content/google.js", "content/content.js"]) await context.addInitScript({ path: path.join(root, file) });
+    const page = await context.newPage();
+    await page.goto("https://www.facebook.com/");
+    await page.waitForTimeout(800);
+    assert.equal(onHome(page), true);
+  } finally { await context.close(); }
+});
