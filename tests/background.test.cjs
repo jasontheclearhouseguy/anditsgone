@@ -79,7 +79,40 @@ test("child hooks respect top-level and child-domain pauses", async () => {
   assert.equal(h.state.injections.length, 0);
   h.state.settings = { notifications: false };
   await h.message({ type: "tt-frame-init" }, h.sender(1));
-  assert.deepEqual(Array.from(h.state.injections[0].files), ["content/autoplay.js"]);
+  assert.deepEqual(Array.from(h.state.injections[0].files), ["content/autoplay.js", "content/signin.js"]);
+});
+
+test("the Google sign-in hook registers in top frames only and follows its switch", async () => {
+  const h = host();
+  await h.apply();
+  assert.equal(h.state.scripts.find(s => s.id === "tt-signin").allFrames, false);
+  h.state.settings = { signin: false };
+  await h.apply();
+  assert.equal(h.state.scripts.find(s => s.id === "tt-signin"), undefined);
+});
+
+function signinPage({ active = false } = {}) {
+  const calls = [];
+  class CredentialsContainer { get(options) { calls.push(options); return Promise.resolve("credential"); } }
+  const window = { CredentialsContainer };
+  const context = { window, CredentialsContainer, navigator: { userActivation: { isActive: active } }, DOMException, Promise, String, Array };
+  vm.runInNewContext(fs.readFileSync(path.join(root, "content/signin.js"), "utf8"), context);
+  return { get: options => new CredentialsContainer().get(options), calls };
+}
+const google = (extra = {}) => ({ identity: { providers: [{ configURL: "https://accounts.google.com/gsi/fedcm.json", clientId: "x" }], ...extra } });
+
+test("Google One Tap opened without a click is refused", async () => {
+  const p = signinPage();
+  await assert.rejects(p.get(google()), { name: "NetworkError" });
+  assert.equal(p.calls.length, 0);
+});
+
+test("clicked and button-mode Google sign-in, other providers and passkeys pass through", async () => {
+  assert.equal(await signinPage({ active: true }).get(google()), "credential");
+  assert.equal(await signinPage().get(google({ mode: "active" })), "credential");
+  assert.equal(await signinPage().get({ identity: { providers: [{ configURL: "https://idp.example/fedcm.json" }] } }), "credential");
+  assert.equal(await signinPage().get({ publicKey: { challenge: new Uint8Array(1) } }), "credential");
+  assert.equal(await signinPage().get({ identity: { providers: [{ configURL: "https://accounts.google.com.evil.example/fedcm.json" }] } }), "credential");
 });
 
 test("raw rule success cannot mark cookies declined; cosmetic results stay hidden", async () => {

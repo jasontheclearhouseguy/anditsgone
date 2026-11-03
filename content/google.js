@@ -1,5 +1,7 @@
-// Google changes its markup frequently. Only hide explicitly identified modules
-// and exact AI-search navigation links; never infer a container from heading text.
+// Google changes its markup frequently. Hide explicitly identified modules, blocks
+// that Google itself headed "AI Overview", and exact AI-search navigation links.
+// A headed block fails open if it holds the results layout, a visible result
+// heading (h3), or sits in the right-hand knowledge panel.
 globalThis.TT_START_GOOGLE_CLEANUP = () => {
   const GOOGLE_HOST = /^(www\.)?google\.(com|cat|[a-z]{2}|(co|com)\.[a-z]{2})$/i;
   if (!GOOGLE_HOST.test(location.hostname)) return;
@@ -12,6 +14,22 @@ globalThis.TT_START_GOOGLE_CLEANUP = () => {
   const MODULES = '[data-attrid="SGE"], [data-attrid="AIOverview"], [data-attrid="ai_overview"]';
   const LAYOUT = '#rso, #search, #center_col, #rcnt, #main, main, [role="main"]';
   const NAV_LINKS = '#hdtb a[href], nav a[href], [role="navigation"] a[href]';
+  // Google's own label for the overview. Only an ARIA heading counts, not h1-h6 text.
+  const AI_HEADING = "AI Overview";
+  const SIDE_PANEL = "#rhs";
+  const hasVisibleResult = (el) =>
+    [...el.querySelectorAll("h3")].some((h) => h.getBoundingClientRect().height > 0);
+
+  // Outermost container around the heading that stays clear of the results layout.
+  const headedBlock = (label) => {
+    if (!label.closest("#rcnt, #search") || label.closest(SIDE_PANEL)) return null;
+    let block = null;
+    for (let n = label.parentElement; n && !n.matches(LAYOUT + ", " + SIDE_PANEL); n = n.parentElement) {
+      if (n.querySelector(LAYOUT + ", " + SIDE_PANEL)) break;
+      block = n;
+    }
+    return block && !hasVisibleResult(block) ? block : null;
+  };
   const MARK = "data-aig-google-hidden";
   const hidden = new Set();
   let style = null;
@@ -28,6 +46,11 @@ globalThis.TT_START_GOOGLE_CLEANUP = () => {
         if (!module.closest("#search, #rso") || module.matches(LAYOUT) ||
             module.querySelector(LAYOUT + ", h3")) continue;
         targets.add(module);
+      }
+      for (const label of document.querySelectorAll('[role="heading"]')) {
+        if (label.textContent.trim() !== AI_HEADING) continue;
+        const block = headedBlock(label);
+        if (block) targets.add(block);
       }
     }
     if (!aiMode && (searchPage || homePage)) {

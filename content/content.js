@@ -68,6 +68,9 @@
     "html[data-tt-unlocked],html[data-tt-unlocked] body{overflow:auto!important}\n";
   if (s.widgets) css += WIDGET_SEL + "{display:none!important}\n";
   if (s.shorts && isYouTube) css += SHORTS_SEL + "{display:none!important}\n";
+  // Older One Tap, still used in Firefox and by some sites: an iframe in the page.
+  if (s.signin) css += "#credential_picker_container,#credential_picker_iframe," +
+    "iframe[src^='https://accounts.google.com/gsi/iframe/select']{display:none!important}\n";
 
   const style = document.createElement("style");
   style.id = "anditsgone";

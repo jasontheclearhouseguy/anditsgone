@@ -7,7 +7,8 @@ const root = path.resolve(__dirname, "..");
 let browser;
 
 before(async () => {
-  const executablePath = process.env.CHROMIUM_PATH || (fs.existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined);
+  const candidates = ["/usr/bin/chromium", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"];
+  const executablePath = process.env.CHROMIUM_PATH || candidates.find(p => fs.existsSync(p));
   browser = await chromium.launch({ executablePath, headless: true });
 });
 after(async () => { await browser?.close(); });
@@ -52,6 +53,40 @@ test("identified AI modules hide, while normal results remain visible", async ()
     assert.equal(await h.page.locator("#ai").isVisible(), false);
     assert.equal(await h.page.locator("#rso").isVisible(), true);
   } finally { await h.close(); }
+});
+
+// Current (late 2026) Google markup: the overview sits beside #center_col with no
+// data-attrid, headed by an ARIA heading, and holds a zero-size "AI Mode replied:" h3.
+const OVERVIEW = '<div id="aio"><div><div role="heading" aria-level="2"><strong>AI Overview</strong></div><h3 style="height:0;margin:0;overflow:hidden">AI Mode replied:</h3><div>AI text</div></div></div>';
+
+test("a block Google heads AI Overview hides, while results and the knowledge panel stay", async () => {
+  const h = await fixture(`<div id="rcnt">${OVERVIEW}<div id="center_col" role="main"><div id="search"><div id="rso"><h3>Regular result</h3></div></div></div><div id="rhs"><div><div role="heading">AI Overview</div><a id="site" href="https://example.org">example.org</a></div></div></div>`);
+  try {
+    await h.page.waitForTimeout(200);
+    assert.equal(await h.page.locator("#aio").isVisible(), false);
+    for (const id of ["rso", "rhs", "site"]) assert.equal(await h.page.locator("#" + id).isVisible(), true, id);
+    assert.deepEqual(h.errors, []);
+  } finally { await h.close(); }
+});
+
+test("an AI Overview heading next to a visible result heading is left visible", async () => {
+  const h = await fixture('<div id="rcnt"><div id="mixed"><div role="heading">AI Overview</div><h3>Regular result</h3></div><div id="center_col"></div></div>');
+  try {
+    await h.page.waitForTimeout(200);
+    assert.equal(await h.page.locator("#mixed").isVisible(), true);
+  } finally { await h.close(); }
+});
+
+test("the older in-page Google One Tap iframe is hidden, and stays when switched off", async () => {
+  const body = '<div id="credential_picker_container"><iframe id="frame"></iframe></div><p id="page">Article</p>';
+  const on = await fixture(body, { url: "https://news.example/" });
+  try {
+    assert.equal(await on.page.locator("#credential_picker_container").isVisible(), false);
+    assert.equal(await on.page.locator("#page").isVisible(), true);
+  } finally { await on.close(); }
+  const off = await fixture(body, { url: "https://news.example/", settings: { signin: false } });
+  try { assert.equal(await off.page.locator("#credential_picker_container").isVisible(), true); }
+  finally { await off.close(); }
 });
 
 test("a mislabeled container with ordinary results is left visible", async () => {
