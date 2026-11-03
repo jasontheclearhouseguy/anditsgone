@@ -1,12 +1,13 @@
 {
   "name": "anditsgone",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.1",
   "scripts": {
-    "build": "esbuild src/background.js --bundle --format=iife --outfile=build/background.js && esbuild src/consent.js --bundle --format=iife --outfile=build/consent.js"
+    "build": "esbuild src/background.js --bundle --format=iife --outfile=build/background.js && esbuild src/consent.js --bundle --format=iife --outfile=build/consent.js",
+    "test": "node --test tests/*.test.cjs"
   },
   "devDependencies": {
     "@duckduckgo/autoconsent": "^17.2.0",
-    "esbuild": "^0.24.2"
+    "esbuild": "^0.25.12"
   }
 }

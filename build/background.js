@@ -550,7 +550,7 @@
   // shared/defaults.js
   globalThis.TT_DEFAULTS = {
     google: true,
-    // Google web-only results (udm=14)
+    // Google without AI Overview or AI Mode
     reddit: true,
     // www.reddit.com -> old.reddit.com
     facebook: true,
@@ -566,7 +566,7 @@
     notifications: true,
     // auto-deny "Allow notifications?" prompts
     autoplay: true,
-    // video waits for a click; floating players removed
+    // media waits for page interaction; floating players removed
     widgets: true,
     // chat bubbles and "open in app" banners
     shorts: true,
@@ -577,7 +577,7 @@
     // hostnames where the extension does nothing
   };
   globalThis.TT_FEATURES = [
-    ["google", "Plain Google results", "Web results only. No AI Overview, no carousels."],
+    ["google", "Google without AI", "Normal Google results, minus the AI Overview and AI Mode."],
     ["reddit", "Old Reddit", "Sends reddit.com links to old.reddit.com."],
     ["facebook", "Facebook friends feed", "Facebook opens on posts from your friends, not suggested content."],
     ["cookies", "Decline cookies", 'Clicks "Reject all" or "Necessary only" for you. Never clicks Accept.'],
@@ -585,11 +585,12 @@
     ["telemetry", "Block telemetry", "Stops analytics, session recording and tracking pixels from reporting what you do."],
     ["popups", "No signup popups", 'Newsletter, login and "before you go" overlays. Unlocks scrolling.'],
     ["notifications", "No notification prompts", "Sites asking to send notifications get an automatic no."],
-    ["autoplay", "No autoplay", "Video and audio wait for you to press play. Floating players removed."],
+    ["autoplay", "No autoplay", "Blocks media until you interact with the page. Floating players removed."],
     ["widgets", "No chat bubbles or app banners", 'Support chat launchers and "Open in app" bars.'],
     ["shorts", "No YouTube Shorts", "Removes Shorts shelves, tabs and sidebar links."],
     ["sticky", "Unstick headers", "Top bars scroll away with the page. Can break some sites."]
   ];
+  globalThis.TT_PAUSED_HOST = (paused, host) => (paused || []).find((p) => host === p || host.endsWith("." + p));
 
   // src/background.js
   var DEFAULTS = globalThis.TT_DEFAULTS;
@@ -603,7 +604,7 @@
   function isPaused(s, url) {
     try {
       const host = new URL(url).hostname.replace(/^www\./, "");
-      return (s.paused || []).some((p) => host === p || host.endsWith("." + p));
+      return !!globalThis.TT_PAUSED_HOST(s.paused, host);
     } catch {
       return false;
     }
@@ -622,6 +623,7 @@
     return out;
   }
   var PAUSE_RULE_ID = 1;
+  var PAUSE_NAV_RULE_ID = 2;
   var SUB_RESOURCES = ["sub_frame", "stylesheet", "script", "image", "font", "object", "xmlhttprequest", "ping", "csp_report", "media", "websocket", "other"];
   var applying = Promise.resolve();
   function applyToggles() {
@@ -630,6 +632,7 @@
   }
   async function applyTogglesNow() {
     const s = await settings();
+    let succeeded = true;
     const enable = [];
     const disable = [];
     (s.reddit ? enable : disable).push("reddit");
@@ -638,20 +641,27 @@
     try {
       await chrome.declarativeNetRequest.updateEnabledRulesets({ enableRulesetIds: enable, disableRulesetIds: disable });
     } catch (e) {
+      succeeded = false;
       console.warn("AndItsGone: ruleset update failed", e);
     }
     try {
       const paused = (s.paused || []).filter(Boolean);
       await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [PAUSE_RULE_ID],
+        removeRuleIds: [PAUSE_RULE_ID, PAUSE_NAV_RULE_ID],
         addRules: paused.length ? [{
           id: PAUSE_RULE_ID,
           priority: 100,
           action: { type: "allow" },
           condition: { initiatorDomains: paused, resourceTypes: SUB_RESOURCES }
+        }, {
+          id: PAUSE_NAV_RULE_ID,
+          priority: 100,
+          action: { type: "allow" },
+          condition: { requestDomains: paused, resourceTypes: ["main_frame"] }
         }] : []
       });
     } catch (e) {
+      succeeded = false;
       console.warn("AndItsGone: pause rule update failed", e);
     }
     try {
@@ -660,14 +670,16 @@
       if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: existing });
       const exclude = pausePatterns((s.paused || []).filter(Boolean));
       const scripts = MAIN_SCRIPTS.filter((m) => s[m.key]).map((m) => {
-        const reg = { id: m.id, js: m.js, matches: ["<all_urls>"], runAt: "document_start", world: "MAIN", allFrames: true };
+        const reg = { id: m.id, js: m.js, matches: ["<all_urls>"], runAt: "document_start", world: "MAIN", allFrames: !!m.pauseExempt };
         if (!m.pauseExempt && exclude.length) reg.excludeMatches = exclude;
         return reg;
       });
       if (scripts.length) await chrome.scripting.registerContentScripts(scripts);
     } catch (e) {
+      succeeded = false;
       console.warn("AndItsGone: script registration failed", e);
     }
+    return succeeded;
   }
   chrome.runtime.onInstalled.addListener(applyToggles);
   chrome.runtime.onStartup.addListener(applyToggles);
@@ -680,29 +692,62 @@
     enableCosmeticRules: true,
     enableGeneratedRules: true,
     enableHeuristicDetection: true,
-    heuristicMode: "tier1",
-    // reject or dismiss only; never clicks a lone "Accept"
+    heuristicMode: "reject",
+    // ambiguous OK / Continue buttons can grant consent
     logs: { lifecycle: false, rulesteps: false, detectionsteps: false, evals: false, errors: false, messages: false, waits: false }
   };
-  async function bumpCount(tabId) {
-    try {
-      const key = "declined-" + tabId;
-      const n = ((await chrome.storage.session.get(key))[key] || 0) + 1;
-      await chrome.storage.session.set({ [key]: n });
-      await chrome.action.setBadgeBackgroundColor({ color: "#2a5db0", tabId });
-      await chrome.action.setBadgeText({ text: "\u2713", tabId });
-    } catch {
-    }
+  var tabWork = /* @__PURE__ */ new Map();
+  function inTab(tabId, task) {
+    const work = (tabWork.get(tabId) || Promise.resolve()).then(task, task);
+    tabWork.set(tabId, work);
+    const done = () => {
+      if (tabWork.get(tabId) === work) tabWork.delete(tabId);
+    };
+    work.then(done, done);
+    return work;
   }
-  chrome.tabs.onRemoved.addListener((tabId) => {
-    try {
-      chrome.storage.session.remove(["declined-" + tabId, "hidden-" + tabId]);
-    } catch {
-    }
+  async function clearStatus(tabId) {
+    await chrome.storage.session.remove(["consent-" + tabId, "declined-" + tabId, "hidden-" + tabId]);
+    await chrome.action.setBadgeText({ text: "", tabId });
+  }
+  chrome.webNavigation.onCommitted.addListener(({ tabId, frameId }) => {
+    if (frameId === 0) inTab(tabId, () => clearStatus(tabId)).catch(() => {
+    });
   });
+  chrome.webNavigation.onHistoryStateUpdated.addListener(({ tabId, frameId }) => {
+    if (frameId === 0) inTab(tabId, () => clearStatus(tabId)).catch(() => {
+    });
+  });
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    inTab(tabId, () => chrome.storage.session.remove(["consent-" + tabId, "declined-" + tabId, "hidden-" + tabId])).catch(() => {
+    });
+  });
+  async function recordStatus(sender, status) {
+    const tabId = sender.tab.id;
+    return inTab(tabId, async () => {
+      const [top, frame] = await Promise.all([
+        chrome.webNavigation.getFrame({ tabId, frameId: 0 }),
+        chrome.webNavigation.getFrame({ tabId, frameId: sender.frameId || 0 })
+      ]);
+      if (!top || !frame || frame.url !== sender.url) return;
+      if (sender.documentId && frame.documentId && sender.documentId !== frame.documentId) return;
+      if (sender.documentLifecycle && sender.documentLifecycle !== "active") return;
+      const s = await settings();
+      if (!s.cookies || isPaused(s, top.url)) return;
+      const key = "consent-" + tabId;
+      const previous = (await chrome.storage.session.get(key))[key];
+      const state = previous && previous.documentId === top.documentId && previous.url === top.url ? previous : { documentId: top.documentId, url: top.url };
+      state[status] = (state[status] || 0) + 1;
+      await chrome.storage.session.set({ [key]: state });
+      if (state.declined) {
+        await chrome.action.setBadgeBackgroundColor({ color: "#2a5db0", tabId });
+        await chrome.action.setBadgeText({ text: "\u2713", tabId });
+      }
+    });
+  }
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (!msg || msg.type !== "tt-apply" || !(sender.url || "").startsWith(chrome.runtime.getURL(""))) return;
-    applyToggles().then(() => sendResponse(true), () => sendResponse(false));
+    applyToggles().then(sendResponse, () => sendResponse(false));
     return true;
   });
   chrome.runtime.onMessage.addListener((msg, sender) => {
@@ -724,6 +769,19 @@
           });
           break;
         }
+        case "tt-frame-init": {
+          if (frameId === 0) break;
+          const s = await settings();
+          const top = await chrome.webNavigation.getFrame({ tabId, frameId: 0 });
+          if (!top || isPaused(s, top.url) || isPaused(s, sender.url)) break;
+          const files = MAIN_SCRIPTS.filter((m) => !m.pauseExempt && s[m.key]).flatMap((m) => m.js);
+          if (files.length) await chrome.scripting.executeScript({
+            target: sender.documentId ? { tabId, documentIds: [sender.documentId] } : { tabId, frameIds: [frameId] },
+            world: "MAIN",
+            files
+          });
+          break;
+        }
         case "eval": {
           let result = false;
           try {
@@ -738,15 +796,12 @@
           break;
         }
         case "tt-banner-hidden":
-          try {
-            await chrome.storage.session.set({ ["hidden-" + tabId]: true });
-          } catch {
-          }
+          await recordStatus(sender, "hidden");
           break;
-        case "optOutResult":
-          if (msg.result) bumpCount(tabId);
+        case "tt-consent-status":
+          if (["declined", "hidden", "attempted"].includes(msg.status)) await recordStatus(sender, msg.status);
           break;
       }
-    })();
+    })().catch((e) => console.warn("AndItsGone: content request failed", e));
   });
 })();

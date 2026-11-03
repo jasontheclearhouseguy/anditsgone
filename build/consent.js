@@ -3685,6 +3685,18 @@
   var consent = new AutoConsent((message) => {
     chrome.runtime.sendMessage(message).catch(() => {
     });
+    if (message.type === "autoconsentDone") {
+      const report = (status) => chrome.runtime.sendMessage({
+        type: "tt-consent-status",
+        status,
+        url: location.href
+      }).catch(() => {
+      });
+      if (message.isCosmetic) report("hidden");
+      else if (consent.foundCmp?.hasSelfTest) {
+        consent.doSelfTest().then((ok) => report(ok ? "declined" : "attempted"), () => report("attempted"));
+      } else report("attempted");
+    }
   });
   chrome.runtime.onMessage.addListener((message) => {
     consent.receiveMessageCallback(message);
