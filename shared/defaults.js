@@ -16,7 +16,7 @@ globalThis.TT_DEFAULTS = {
 };
 
 globalThis.TT_FEATURES = [
-  ["google", "Google without AI", "Normal Google results, minus the AI Overview and AI Mode."],
+  ["google", "Google without AI", "Conservatively hides identified AI blocks and AI-search navigation links. Uncertain blocks stay visible."],
   ["reddit", "Old Reddit", "Sends reddit.com links to old.reddit.com."],
   ["facebook", "Facebook friends feed", "Facebook opens on posts from your friends, not suggested content."],
   ["cookies", "Decline cookies", "Clicks \"Reject all\" or \"Necessary only\" for you. Never clicks Accept."],
