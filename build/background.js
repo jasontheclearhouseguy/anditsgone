@@ -623,7 +623,12 @@
   }
   var PAUSE_RULE_ID = 1;
   var SUB_RESOURCES = ["sub_frame", "stylesheet", "script", "image", "font", "object", "xmlhttprequest", "ping", "csp_report", "media", "websocket", "other"];
-  async function applyToggles() {
+  var applying = Promise.resolve();
+  function applyToggles() {
+    applying = applying.then(applyTogglesNow, applyTogglesNow);
+    return applying;
+  }
+  async function applyTogglesNow() {
     const s = await settings();
     const enable = [];
     const disable = [];

@@ -46,7 +46,15 @@ function pausePatterns(paused) {
 const PAUSE_RULE_ID = 1;
 const SUB_RESOURCES = ["sub_frame", "stylesheet", "script", "image", "font", "object", "xmlhttprequest", "ping", "csp_report", "media", "websocket", "other"];
 
-async function applyToggles() {
+// Run one update at a time: the popup and the settings listener can both trigger it at once,
+// and overlapping unregister/register calls could leave the GPC script unregistered.
+let applying = Promise.resolve();
+function applyToggles() {
+  applying = applying.then(applyTogglesNow, applyTogglesNow);
+  return applying;
+}
+
+async function applyTogglesNow() {
   const s = await settings();
   const enable = [];
   const disable = [];

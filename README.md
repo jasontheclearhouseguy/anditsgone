@@ -6,7 +6,7 @@ A browser extension that strips the modern web back to the way you remember it.
 
 ## What it does
 
-- **Plain Google results.** Every search opens in Google's Web mode (`udm=14`): no AI Overview, no carousels, no AI Mode tab.
+- **Google without AI.** Keeps Google's normal results page (maps, weather, knowledge panels, images, news) and removes the AI Overview and the AI Mode tab and buttons. Google changes its page often, so if an AI Overview slips through, report the search.
 - **Old Reddit.** reddit.com links go to old.reddit.com. Galleries, share links, settings and login are left alone.
 - **Facebook friends feed.** Facebook's home page opens on the Friends feed: posts from people you know, no suggested pages, reels or ads. Feeds → All still shows the regular feed.
 - **Decline cookies.** Finds cookie consent popups and clicks "Reject all" or "Necessary only" for you, using DuckDuckGo's open-source autoconsent rules (hundreds of consent tools, plus a fallback that recognizes reject and dismiss buttons). It never clicks Accept. If it can't decline on a site, it hides the banner after a few seconds so the page is usable, and the popup says so. Hiding records no choice, so that site may still use cookies.

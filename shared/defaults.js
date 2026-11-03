@@ -1,6 +1,6 @@
 // Feature defaults, shared by the content script and the popup.
 globalThis.TT_DEFAULTS = {
-  google: true,        // Google web-only results (udm=14)
+  google: true,        // Google without AI Overview or AI Mode
   reddit: true,        // www.reddit.com -> old.reddit.com
   facebook: true,      // Facebook home opens on the Friends feed
   cookies: true,       // click "Reject" on cookie / consent banners
@@ -16,7 +16,7 @@ globalThis.TT_DEFAULTS = {
 };
 
 globalThis.TT_FEATURES = [
-  ["google", "Plain Google results", "Web results only. No AI Overview, no carousels."],
+  ["google", "Google without AI", "Normal Google results, minus the AI Overview and AI Mode."],
   ["reddit", "Old Reddit", "Sends reddit.com links to old.reddit.com."],
   ["facebook", "Facebook friends feed", "Facebook opens on posts from your friends, not suggested content."],
   ["cookies", "Decline cookies", "Clicks \"Reject all\" or \"Necessary only\" for you. Never clicks Accept."],
