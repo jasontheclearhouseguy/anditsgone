@@ -12,53 +12,9 @@
   }
   if (TT_PAUSED_HOST(s.paused, host)) return;
 
-  const isGoogle = /(^|\.)google\.[a-z.]+$/.test(location.hostname);
   const isYouTube = /(^|\.)youtube\.com$/.test(location.hostname);
 
-  // Google: keep the normal results page (maps, weather, panels, images) and remove only
-  // the AI Overview and the AI Mode entry points. Google's class names are scrambled and
-  // change often, so the Overview is found by its heading text instead.
-  if (s.google && isTop && isGoogle) {
-    const AI_HEADING = /^(AI Overviews?|Übersicht mit KI|Aperçu (de l'|par )?IA|Vue d'ensemble (par l'|de l')?IA|Visión general (creada )?(por|con) IA|Resumo (criado )?por IA|Panoramica (creata con l')?IA|AI による概要)$/i;
-    const STOP = new Set(["rso", "center_col", "rcnt", "search", "main"]);
-    const tag = (el) => {
-      el.setAttribute("data-tt-hidden", "");
-      el.style.setProperty("display", "none", "important");
-    };
-    // Climb from the heading to the block that sits directly in the results column.
-    const overviewBlock = (heading) => {
-      let el = heading;
-      while (el.parentElement && !STOP.has(el.parentElement.id) && el.parentElement !== document.body) {
-        el = el.parentElement;
-      }
-      const results = document.getElementById("rso");
-      if (!el.parentElement || el === document.body || (results && el.contains(results))) return null;
-      return el;
-    };
-    const stripAI = () => {
-      for (const h of document.querySelectorAll("h1, h2, h3, [role='heading'], strong, span, div[aria-level]")) {
-        if (h.childElementCount > 2 || h.closest("[data-tt-hidden]")) continue;
-        const text = (h.textContent || "").trim();
-        if (text.length > 40 || !AI_HEADING.test(text)) continue;
-        const block = overviewBlock(h);
-        if (block) tag(block);
-      }
-      // AI Mode: the results tab, the button by the search box, and the homepage pill.
-      for (const el of document.querySelectorAll("a[href*='udm=50'], [role='link'], [role='button'], button, a")) {
-        if (el.closest("[data-tt-hidden]")) continue;
-        const isAiMode = (el.getAttribute("href") || "").includes("udm=50") || (el.textContent || "").trim() === "AI Mode";
-        if (isAiMode) tag(el.closest("[role='listitem']") || el);
-      }
-    };
-    // Run on every change, without the usual debounce, so the box disappears as it arrives.
-    let queued = false;
-    new MutationObserver(() => {
-      if (queued) return;
-      queued = true;
-      requestAnimationFrame(() => { queued = false; stripAI(); });
-    }).observe(root, { childList: true, subtree: true });
-    addEventListener("DOMContentLoaded", stripAI);
-  }
+  if (s.google && isTop) TT_START_GOOGLE_CLEANUP();
 
   // Facebook: the home feed opens on the Friends feed. Other feeds (Feeds > All, Groups)
   // carry a filter in the URL, so they're left alone. Facebook changes pages without
@@ -112,7 +68,6 @@
     "html[data-tt-unlocked],html[data-tt-unlocked] body{overflow:auto!important}\n";
   if (s.widgets) css += WIDGET_SEL + "{display:none!important}\n";
   if (s.shorts && isYouTube) css += SHORTS_SEL + "{display:none!important}\n";
-  if (s.google && isGoogle) css += "a[href*='udm=50']{display:none!important}\n";
 
   const style = document.createElement("style");
   style.id = "anditsgone";

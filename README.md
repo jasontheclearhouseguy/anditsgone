@@ -6,7 +6,7 @@ A browser extension that strips the modern web back to the way you remember it.
 
 ## What it does
 
-- **Google without AI.** Keeps Google's normal results page (maps, weather, knowledge panels, images, news) and removes the AI Overview and the AI Mode tab and buttons. Google changes its page often, so if an AI Overview slips through, report the search.
+- **Google without AI.** Conservatively hides explicitly marked AI Overview modules and exact AI-search links in Google's navigation. It leaves uncertain blocks visible, preserves ordinary results and links, and does not hide new blocks after you scroll down. Google changes its markup often, so some AI content and entry points may remain. You can turn this feature off in the popup.
 - **Old Reddit.** reddit.com links go to old.reddit.com. Galleries, share links, settings and login are left alone.
 - **Facebook friends feed.** Facebook's home page opens on the Friends feed: posts from people you know, no suggested pages, reels or ads. Feeds → All still shows the regular feed.
 - **Decline cookies.** Finds cookie consent popups and clicks "Reject all" or "Necessary only" for you, using DuckDuckGo's open-source autoconsent rules (hundreds of consent tools, plus a fallback restricted to explicit rejection buttons). The generic fallback leaves ambiguous "OK" and "Continue" buttons alone. The popup distinguishes a rejection that passed the consent tool's check from an unverified attempt or a hidden banner. Hiding records no choice, so that site may still use cookies.
@@ -57,6 +57,8 @@ npm run build
 The `build/` folder is committed, so loading the extension unpacked works without building.
 
 Run `npm test` after rebuilding to check consent status, navigation resets, pause rules, and settings handling. These tests use browser API mocks; they do not replace loading the extension in Chrome and Firefox for integration testing.
+
+Run `npm run test:browser` for Google cleanup regression fixtures in headless Chromium. The tests use `/usr/bin/chromium` when available; otherwise run `npx playwright install chromium` first or set `CHROMIUM_PATH` to your Chromium executable. The fixtures check that normal results, navigation controls and scroll position survive cleanup; they do not test live Google markup.
 
 ## Credits
 Cookie handling uses [@duckduckgo/autoconsent](https://github.com/duckduckgo/autoconsent) (MPL-2.0).
