@@ -565,6 +565,8 @@
     // hide newsletter, signup and "before you go" overlays
     notifications: true,
     // auto-deny "Allow notifications?" prompts
+    signin: true,
+    // refuse "Sign in with Google" (One Tap) prompts sites open on their own
     autoplay: true,
     // media waits for page interaction; floating players removed
     widgets: true,
@@ -585,6 +587,7 @@
     ["telemetry", "Block telemetry", "Stops analytics, session recording and tracking pixels from reporting what you do."],
     ["popups", "No signup popups", 'Newsletter, login and "before you go" overlays. Unlocks scrolling.'],
     ["notifications", "No notification prompts", "Sites asking to send notifications get an automatic no."],
+    ["signin", "No Google sign-in prompts", 'The "Sign in with Google" box sites pop up in the corner. Sign-in buttons you click still work.'],
     ["autoplay", "No autoplay", "Blocks media until you interact with the page. Floating players removed."],
     ["widgets", "No chat bubbles or app banners", 'Support chat launchers and "Open in app" bars.'],
     ["shorts", "No YouTube Shorts", "Removes Shorts shelves, tabs and sidebar links."],
@@ -612,7 +615,8 @@
   var MAIN_SCRIPTS = [
     { key: "gpc", id: "tt-gpc", js: ["content/gpc.js"], pauseExempt: true },
     { key: "notifications", id: "tt-notif", js: ["content/notif.js"] },
-    { key: "autoplay", id: "tt-autoplay", js: ["content/autoplay.js"] }
+    { key: "autoplay", id: "tt-autoplay", js: ["content/autoplay.js"] },
+    { key: "signin", id: "tt-signin", js: ["content/signin.js"] }
   ];
   function pausePatterns(paused) {
     const out = [];
@@ -684,7 +688,7 @@
   chrome.runtime.onInstalled.addListener(applyToggles);
   chrome.runtime.onStartup.addListener(applyToggles);
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "sync" && (changes.reddit || changes.gpc || changes.telemetry || changes.paused || changes.notifications || changes.autoplay)) applyToggles();
+    if (area === "sync" && (changes.reddit || changes.telemetry || changes.paused || MAIN_SCRIPTS.some((m) => changes[m.key]))) applyToggles();
   });
   var CONSENT_CONFIG = {
     autoAction: "optOut",

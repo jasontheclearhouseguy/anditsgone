@@ -31,7 +31,8 @@ function isPaused(s, url) {
 const MAIN_SCRIPTS = [
   { key: "gpc", id: "tt-gpc", js: ["content/gpc.js"], pauseExempt: true },
   { key: "notifications", id: "tt-notif", js: ["content/notif.js"] },
-  { key: "autoplay", id: "tt-autoplay", js: ["content/autoplay.js"] }
+  { key: "autoplay", id: "tt-autoplay", js: ["content/autoplay.js"] },
+  { key: "signin", id: "tt-signin", js: ["content/signin.js"] }
 ];
 
 function pausePatterns(paused) {
@@ -113,7 +114,8 @@ async function applyTogglesNow() {
 chrome.runtime.onInstalled.addListener(applyToggles);
 chrome.runtime.onStartup.addListener(applyToggles);
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "sync" && (changes.reddit || changes.gpc || changes.telemetry || changes.paused || changes.notifications || changes.autoplay)) applyToggles();
+  if (area === "sync" && (changes.reddit || changes.telemetry || changes.paused ||
+      MAIN_SCRIPTS.some((m) => changes[m.key]))) applyToggles();
 });
 
 // ---------- Cookie declines ----------

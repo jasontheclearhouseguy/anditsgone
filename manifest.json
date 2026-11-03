@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AndItsGone",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "description": "AI Overviews, cookie banners, popups, autoplay, trackers... and it's gone. The web, the way you remember it.",
   "permissions": [
     "storage",

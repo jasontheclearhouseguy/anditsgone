@@ -1,7 +1,7 @@
 {
   "name": "anditsgone",
   "private": true,
-  "version": "1.2.2",
+  "version": "1.3.0",
   "scripts": {
     "build": "esbuild src/background.js --bundle --format=iife --outfile=build/background.js && esbuild src/consent.js --bundle --format=iife --outfile=build/consent.js",
     "test": "node --test tests/*.test.cjs",

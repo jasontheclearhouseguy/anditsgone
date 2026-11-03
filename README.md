@@ -6,7 +6,7 @@ A browser extension that strips the modern web back to the way you remember it.
 
 ## What it does
 
-- **Google without AI.** Conservatively hides explicitly marked AI Overview modules and exact AI-search links in Google's navigation. It leaves uncertain blocks visible, preserves ordinary results and links, and does not hide new blocks after you scroll down. Google changes its markup often, so some AI content and entry points may remain. You can turn this feature off in the popup.
+- **Google without AI.** Conservatively hides AI Overview blocks that Google marks or heads "AI Overview" (English only) and exact AI-search links in Google's navigation. Knowledge panels on the right stay, even when Google labels them "AI Overview", because they also hold the site link, ratings and facts. It leaves uncertain blocks visible, preserves ordinary results and links, and does not hide new blocks after you scroll down. Google changes its markup often, so some AI content and entry points may remain. You can turn this feature off in the popup.
 - **Old Reddit.** reddit.com links go to old.reddit.com. Galleries, share links, settings and login are left alone.
 - **Facebook friends feed.** Facebook's home page opens on the Friends feed: posts from people you know, no suggested pages, reels or ads. Feeds → All still shows the regular feed.
 - **Decline cookies.** Finds cookie consent popups and clicks "Reject all" or "Necessary only" for you, using DuckDuckGo's open-source autoconsent rules (hundreds of consent tools, plus a fallback restricted to explicit rejection buttons). The generic fallback leaves ambiguous "OK" and "Continue" buttons alone. The popup distinguishes a rejection that passed the consent tool's check from an unverified attempt or a hidden banner. Hiding records no choice, so that site may still use cookies.
@@ -14,6 +14,7 @@ A browser extension that strips the modern web back to the way you remember it.
 - **Block telemetry.** Stops third-party analytics (Google Analytics, Mixpanel, Segment, Amplitude, Heap), session recording (Hotjar, FullStory, Microsoft Clarity, LogRocket and others), tracking pixels (Meta, LinkedIn, TikTok, X, Pinterest, Bing, Snap) and background beacons. Google Analytics is replaced with a stand-in that sends nothing but keeps pages that wait on it working.
 - **No signup popups.** Catches page-covering overlays that appear on their own and talk about newsletters, accounts, ad blockers, apps or discounts. Dialogs you open yourself are left alone.
 - **No notification prompts.** Sites asking to send notifications get an automatic no.
+- **No Google sign-in prompts.** The "Sign in with Google" box that sites pop up in the corner on their own (Google One Tap) is refused or hidden. "Sign in with Google" buttons you click still work. Other sign-in providers are left alone.
 - **No autoplay.** Video and audio are blocked until you interact with the page. An unrelated click, touch or key press can allow playback for five seconds, and media allowed during that window can play again on that page. Floating corner players are removed. This is a page cleanup feature; page code can replace the playback and notification hooks.
 - **No chat bubbles or app banners.** Intercom, Drift, HubSpot, Zendesk and similar launchers, plus "Open in app" bars.
 - **No YouTube Shorts.** Shelves, tabs and sidebar links.
