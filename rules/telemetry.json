@@ -1,0 +1,68 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "domainType": "thirdParty",
+      "requestDomains": [
+        "google-analytics.com", "analytics.google.com", "stats.g.doubleclick.net",
+        "hotjar.com", "hotjar.io", "fullstory.com", "mouseflow.com", "smartlook.com", "smartlook.cloud",
+        "lr-ingest.io", "lr-in.com", "lr-in-prod.com", "logrocket.io", "clarity.ms", "inspectlet.com",
+        "luckyorange.com", "luckyorange.net", "crazyegg.com", "quantummetric.com", "contentsquare.net",
+        "heapanalytics.com", "mixpanel.com", "mxpnl.com", "segment.com", "segment.io", "amplitude.com",
+        "nr-data.net", "js-agent.newrelic.com", "browser-intake-datadoghq.com", "browser-intake-datadoghq.eu",
+        "scorecardresearch.com", "quantserve.com", "chartbeat.com", "chartbeat.net",
+        "bat.bing.com", "analytics.tiktok.com", "px.ads.linkedin.com", "snap.licdn.com",
+        "static.ads-twitter.com", "analytics.twitter.com", "ct.pinterest.com", "sc-static.net", "tr.snapchat.com",
+        "matomo.cloud", "piwik.pro", "kissmetrics.io", "pendo.io", "mouseflow.io"
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "domainType": "thirdParty",
+      "urlFilter": "||connect.facebook.net^*/fbevents.js",
+      "resourceTypes": ["script"]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "domainType": "thirdParty",
+      "urlFilter": "||facebook.com/tr",
+      "resourceTypes": ["image", "ping", "xmlhttprequest", "other"]
+    }
+  },
+  {
+    "id": 4,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "domainType": "thirdParty", "resourceTypes": ["ping"] }
+  },
+  {
+    "id": 5,
+    "priority": 2,
+    "action": { "type": "redirect", "redirect": { "extensionPath": "/surrogates/ga.js" } },
+    "condition": {
+      "domainType": "thirdParty",
+      "urlFilter": "||google-analytics.com/analytics.js",
+      "resourceTypes": ["script"]
+    }
+  },
+  {
+    "id": 6,
+    "priority": 2,
+    "action": { "type": "redirect", "redirect": { "extensionPath": "/surrogates/gtag.js" } },
+    "condition": {
+      "domainType": "thirdParty",
+      "urlFilter": "||googletagmanager.com/gtag/js",
+      "resourceTypes": ["script"]
+    }
+  }
+]

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+<rect x="5" y="5" width="118" height="118" rx="20" fill="#fff" stroke="#14304a" stroke-width="10"/>
+<path d="M5 34 H123" stroke="#14304a" stroke-width="8"/>
+<g fill="#14304a"><circle cx="24" cy="20" r="5.5"/><circle cx="41" cy="20" r="5.5"/><circle cx="58" cy="20" r="5.5"/></g>
+<!-- flat brows sitting just above the eyes -->
+<path d="M25 55 H51 M77 55 H103" stroke="#14304a" stroke-width="7" stroke-linecap="round"/>
+<!-- eyes, with a light lower lid line for the "tired, unbothered" look -->
+<g fill="#14304a"><circle cx="38" cy="68" r="8"/><circle cx="90" cy="68" r="8"/></g>
+<path d="M27 76 H49 M79 76 H101" stroke="#14304a" stroke-width="5" stroke-linecap="round" opacity=".45"/>
+<path d="M50 98 H78" stroke="#14304a" stroke-width="7" stroke-linecap="round"/>
+</svg>
