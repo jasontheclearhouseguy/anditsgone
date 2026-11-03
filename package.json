@@ -1,6 +1,7 @@
 {
   "name": "anditsgone",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "version": "1.3.1",
   "scripts": {
     "build": "esbuild src/background.js --bundle --format=iife --outfile=build/background.js && esbuild src/consent.js --bundle --format=iife --outfile=build/consent.js",

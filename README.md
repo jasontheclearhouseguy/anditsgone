@@ -61,8 +61,15 @@ Run `npm test` after rebuilding to check consent status, navigation resets, paus
 
 Run `npm run test:browser` for Google cleanup regression fixtures in headless Chromium. The tests use `/usr/bin/chromium` when available; otherwise run `npx playwright install chromium` first or set `CHROMIUM_PATH` to your Chromium executable. The fixtures check that normal results, navigation controls and scroll position survive cleanup; they do not test live Google markup.
 
+## License
+Copyright (C) 2026 Jason Heath.
+
+AndItsGone is free software: you can redistribute it and/or modify it under the terms of the [GNU Affero General Public License](LICENSE) as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+Anyone who distributes a modified version, including as a service, must release its source under the same license.
+
 ## Credits
-Cookie handling uses [@duckduckgo/autoconsent](https://github.com/duckduckgo/autoconsent) (MPL-2.0).
+Cookie handling uses [@duckduckgo/autoconsent](https://github.com/duckduckgo/autoconsent), which stays under the [Mozilla Public License 2.0](https://www.mozilla.org/MPL/2.0/). Its code is bundled into `build/consent.js` and `build/background.js` and keeps its MPL notices there. The MPL permits combining it with AGPL-licensed code.
 
 ## Notes
 - Requires Chrome 111+ or Firefox 128+.
