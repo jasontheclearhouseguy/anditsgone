@@ -1,5 +1,5 @@
 // Main world, registered only while "No notification prompts" is on and excluded on paused sites.
-// No on/off state lives in the page, so the page can't switch this off.
+// Like any main-world hook, this can be replaced by page code.
 (() => {
   if (window.Notification && Notification.requestPermission) {
     Notification.requestPermission = function (cb) {

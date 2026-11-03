@@ -10,7 +10,7 @@
   } catch {
     s = Object.assign({}, TT_DEFAULTS);
   }
-  if ((s.paused || []).some((p) => host === p || host.endsWith("." + p))) return;
+  if (TT_PAUSED_HOST(s.paused, host)) return;
 
   const isGoogle = /(^|\.)google\.[a-z.]+$/.test(location.hostname);
   const isYouTube = /(^|\.)youtube\.com$/.test(location.hostname);
@@ -132,6 +132,8 @@
   }
   // Leave dialogs the user opened alone.
   const gestureRecent = () => Date.now() - lastGesture < 2000;
+  const userOpenedOverlays = new WeakSet();
+  let visibleOverlays = new Set();
 
   const vw = () => innerWidth;
   const vh = () => innerHeight;
@@ -175,7 +177,8 @@
   }
 
   function scanOverlays() {
-    if (gestureRecent()) return;
+    const recent = gestureRecent();
+    const current = new Set();
     const mainContent = document.querySelector("main, article, [role='main']");
     const seen = new Set();
     for (const el of document.elementsFromPoint(vw() / 2, vh() / 2)) {
@@ -183,6 +186,10 @@
       if (!f || seen.has(f) || f.hasAttribute("data-tt-hidden")) continue;
       seen.add(f);
       const cover = visibleArea(f.getBoundingClientRect()) / (vw() * vh());
+      if (!cover) continue;
+      current.add(f);
+      if (recent && !visibleOverlays.has(f)) userOpenedOverlays.add(f);
+      if (recent || userOpenedOverlays.has(f)) continue;
       const text = f.textContent || "";
       // Skip whole-app shells that happen to be position:fixed.
       if ((mainContent && f.contains(mainContent)) || f.querySelectorAll("a").length > 25 || text.length > 6000) continue;
@@ -193,6 +200,10 @@
         hide(f); // the dimmed backdrop left behind
       }
     }
+    for (const f of visibleOverlays) {
+      if (!current.has(f)) userOpenedOverlays.delete(f);
+    }
+    visibleOverlays = current;
     if (Date.now() - lastNagHidden < 3000) unlockScroll();
   }
 
@@ -284,7 +295,7 @@
   }
 
   new MutationObserver(schedule).observe(root, {
-    childList: true, subtree: true, attributes: true, attributeFilter: ["class", "open"]
+    childList: true, subtree: true, attributes: true, attributeFilter: ["class", "open", "style"]
   });
   addEventListener("scroll", schedule, { passive: true });
   addEventListener("load", schedule);

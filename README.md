@@ -9,17 +9,19 @@ A browser extension that strips the modern web back to the way you remember it.
 - **Google without AI.** Keeps Google's normal results page (maps, weather, knowledge panels, images, news) and removes the AI Overview and the AI Mode tab and buttons. Google changes its page often, so if an AI Overview slips through, report the search.
 - **Old Reddit.** reddit.com links go to old.reddit.com. Galleries, share links, settings and login are left alone.
 - **Facebook friends feed.** Facebook's home page opens on the Friends feed: posts from people you know, no suggested pages, reels or ads. Feeds → All still shows the regular feed.
-- **Decline cookies.** Finds cookie consent popups and clicks "Reject all" or "Necessary only" for you, using DuckDuckGo's open-source autoconsent rules (hundreds of consent tools, plus a fallback that recognizes reject and dismiss buttons). It never clicks Accept. If it can't decline on a site, it hides the banner after a few seconds so the page is usable, and the popup says so. Hiding records no choice, so that site may still use cookies.
+- **Decline cookies.** Finds cookie consent popups and clicks "Reject all" or "Necessary only" for you, using DuckDuckGo's open-source autoconsent rules (hundreds of consent tools, plus a fallback restricted to explicit rejection buttons). The generic fallback leaves ambiguous "OK" and "Continue" buttons alone. The popup distinguishes a rejection that passed the consent tool's check from an unverified attempt or a hidden banner. Hiding records no choice, so that site may still use cookies.
 - **Global Privacy Control.** Sends the `Sec-GPC: 1` header with every request and sets `navigator.globalPrivacyControl`. Under the CCPA regulations, California businesses must treat this as an opt-out of selling or sharing your personal information, and Colorado, Connecticut, New Jersey, Oregon, Texas and other states have similar rules. GPC stays on even on paused sites, since it can't break a page.
 - **Block telemetry.** Stops third-party analytics (Google Analytics, Mixpanel, Segment, Amplitude, Heap), session recording (Hotjar, FullStory, Microsoft Clarity, LogRocket and others), tracking pixels (Meta, LinkedIn, TikTok, X, Pinterest, Bing, Snap) and background beacons. Google Analytics is replaced with a stand-in that sends nothing but keeps pages that wait on it working.
 - **No signup popups.** Catches page-covering overlays that appear on their own and talk about newsletters, accounts, ad blockers, apps or discounts. Dialogs you open yourself are left alone.
 - **No notification prompts.** Sites asking to send notifications get an automatic no.
-- **No autoplay.** Video and audio wait until you press play. Floating corner players are removed.
+- **No autoplay.** Video and audio are blocked until you interact with the page. An unrelated click, touch or key press can allow playback for five seconds, and media allowed during that window can play again on that page. Floating corner players are removed. This is a page cleanup feature; page code can replace the playback and notification hooks.
 - **No chat bubbles or app banners.** Intercom, Drift, HubSpot, Zendesk and similar launchers, plus "Open in app" bars.
 - **No YouTube Shorts.** Shelves, tabs and sidebar links.
 - **Unstick headers** (off by default). Top bars scroll away with the page.
 
-Each feature has a switch in the toolbar popup, and **Pause here** turns everything off for the current site.
+Each feature has a switch in the toolbar popup. **Pause here** pauses cleanup on the current site, its subdomains and embedded frames; Global Privacy Control stays enabled when its switch is on. The popup shows when a pause comes from a parent domain; resuming removes that parent-domain pause too.
+
+Child-frame notification and autoplay hooks are installed after the worker checks the top-level site's settings, so scripts that run earlier in those frames may escape interception.
 
 ## Install
 
@@ -54,10 +56,13 @@ npm run build
 ```
 The `build/` folder is committed, so loading the extension unpacked works without building.
 
+Run `npm test` after rebuilding to check consent status, navigation resets, pause rules, and settings handling. These tests use browser API mocks; they do not replace loading the extension in Chrome and Firefox for integration testing.
+
 ## Credits
 Cookie handling uses [@duckduckgo/autoconsent](https://github.com/duckduckgo/autoconsent) (MPL-2.0).
 
 ## Notes
 - Requires Chrome 111+ or Firefox 128+.
-- Nothing leaves your browser. Settings sync through your browser account's extension storage.
+- The extension has no analytics or author-operated data collection endpoint. Settings, including paused hostnames, sync through your browser account's extension storage.
+- The navigation permission resets consent status between pages and checks whether embedded frames belong to a paused site. It is not used to keep browsing history.
 - If a site breaks, use **Pause here** on it.

@@ -8,7 +8,7 @@ globalThis.TT_DEFAULTS = {
   gpc: true,           // send Global Privacy Control (Sec-GPC + navigator.globalPrivacyControl)
   popups: true,        // hide newsletter, signup and "before you go" overlays
   notifications: true, // auto-deny "Allow notifications?" prompts
-  autoplay: true,      // video waits for a click; floating players removed
+  autoplay: true,      // media waits for page interaction; floating players removed
   widgets: true,       // chat bubbles and "open in app" banners
   shorts: true,        // YouTube Shorts shelves and tabs
   sticky: false,       // headers scroll away instead of following you
@@ -24,8 +24,10 @@ globalThis.TT_FEATURES = [
   ["telemetry", "Block telemetry", "Stops analytics, session recording and tracking pixels from reporting what you do."],
   ["popups", "No signup popups", "Newsletter, login and \"before you go\" overlays. Unlocks scrolling."],
   ["notifications", "No notification prompts", "Sites asking to send notifications get an automatic no."],
-  ["autoplay", "No autoplay", "Video and audio wait for you to press play. Floating players removed."],
+  ["autoplay", "No autoplay", "Blocks media until you interact with the page. Floating players removed."],
   ["widgets", "No chat bubbles or app banners", "Support chat launchers and \"Open in app\" bars."],
   ["shorts", "No YouTube Shorts", "Removes Shorts shelves, tabs and sidebar links."],
   ["sticky", "Unstick headers", "Top bars scroll away with the page. Can break some sites."]
 ];
+
+globalThis.TT_PAUSED_HOST = (paused, host) => (paused || []).find((p) => host === p || host.endsWith("." + p));

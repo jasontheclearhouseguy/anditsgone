@@ -20,20 +20,29 @@
     if (!tab || !host) return;
     clearTimeout(reloadTimer);
     reloadTimer = setTimeout(async () => {
-      try { await chrome.runtime.sendMessage({ type: "tt-apply" }); } catch {}
+      try {
+        if (!await chrome.runtime.sendMessage({ type: "tt-apply" })) throw new Error("Could not apply settings");
+      } catch {
+        document.getElementById("hint").textContent = "Couldn't apply all settings. Reopen the popup and try again.";
+        return;
+      }
       try { await chrome.tabs.reload(tab.id); } catch {}
       document.getElementById("hint").textContent = "Reloaded with your changes.";
     }, 400);
   };
 
-  // Cookie status for this tab. "Declined" means a Reject choice was actually recorded;
-  // "hidden" means the banner was only hidden, which records no choice.
+  // Show results only for the current document. A passed CMP check is distinct
+  // from a cosmetic hide or an attempt whose result could not be checked.
   try {
-    const dk = "declined-" + tab.id, hk = "hidden-" + tab.id;
-    const st = await chrome.storage.session.get([dk, hk]);
+    const key = "consent-" + tab.id;
+    const st = (await chrome.storage.session.get(key))[key];
+    const frame = await chrome.webNavigation.getFrame({ tabId: tab.id, frameId: 0 });
     const hint = document.getElementById("hint");
-    if (st[dk]) hint.textContent = `Declined cookies on this page${st[dk] > 1 ? ` (${st[dk]} popups)` : ""}.`;
-    else if (st[hk]) hint.textContent = "Hid the cookie banner, but couldn't decline on this site. It may still use cookies.";
+    if (st && frame && st.url === frame.url && st.documentId === frame.documentId) {
+      if (st.declined) hint.textContent = `Cookie rejection passed the consent tool's check${st.declined > 1 ? ` (${st.declined} popups)` : ""}.`;
+      else if (st.hidden) hint.textContent = "Hid the cookie banner, but couldn't confirm a rejection. This site may still use cookies.";
+      else if (st.attempted) hint.textContent = "Tried to decline cookies, but couldn't verify the result. This site may still use cookies.";
+    }
   } catch {}
 
   for (const [key, name, desc] of TT_FEATURES) {
@@ -51,10 +60,11 @@
   }
 
   function renderSite() {
-    const paused = (s.paused || []).includes(host);
+    const pausedHost = TT_PAUSED_HOST(s.paused, host);
+    const paused = !!pausedHost;
     pause.checked = paused;
     document.getElementById("siteRow").classList.toggle("paused", paused);
-    siteState.textContent = paused ? "Paused, showing the site as-is" : "Cleaned up";
+    siteState.textContent = paused ? `Paused${pausedHost !== host ? " by " + pausedHost : " here"}; GPC can stay on` : "Cleaned up";
   }
 
   if (host) {
@@ -62,7 +72,8 @@
     renderSite();
     pause.addEventListener("change", async () => {
       const set = new Set(s.paused || []);
-      pause.checked ? set.add(host) : set.delete(host);
+      if (pause.checked) set.add(host);
+      else for (const p of set) if (TT_PAUSED_HOST([p], host)) set.delete(p);
       s.paused = [...set];
       await chrome.storage.sync.set({ paused: s.paused });
       renderSite();

@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "AndItsGone",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "AI Overviews, cookie banners, popups, autoplay, trackers... and it's gone. The web, the way you remember it.",
   "permissions": [
     "storage",
     "declarativeNetRequest",
     "scripting",
-    "activeTab"
+    "activeTab",
+    "webNavigation"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -38,6 +39,12 @@
     ]
   },
   "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/frame.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
     {
       "matches": [
         "<all_urls>"
