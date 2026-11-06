@@ -69,6 +69,94 @@ test("a block Google heads AI Overview hides, while results and the knowledge pa
   } finally { await h.close(); }
 });
 
+// Google from November 2026: the overview is wrapped in an embedded AI Mode frame
+// (#m-x-content inside [data-subtree="mfc"]) with its own zero-size role="main"
+// regions, and a "Show more" button beside the frame. Hiding only the text inside
+// the frame left a blank box with that button.
+const FRAMED = (id) => `<div id="${id}"><div><div data-subtree="mfc"><div><div id="m-x-content"><section><div role="heading" aria-level="2">AI Overview</div><h3 style="height:0;margin:0;overflow:hidden">AI Mode reply for test</h3><div style="height:300px">AI text</div></section><section><div role="main" style="height:0;overflow:hidden"></div></section></div><div style="height:50px"><div role="button" aria-expanded="false">Show more</div></div></div></div></div></div>`;
+
+test("an overview inside an AI Mode frame hides whole, beside or inside the results", async () => {
+  for (const [where, body] of [
+    ["beside #center_col", `<div id="rcnt">${FRAMED("aio")}<div id="center_col" role="main"><div id="search"><div id="rso"><h3>Regular result</h3></div></div></div></div>`],
+    ["inside #rso", `<div id="rcnt"><div id="center_col" role="main"><div id="search"><div id="rso">${FRAMED("aio")}<div id="result"><h3>Regular result</h3></div></div></div></div></div>`]
+  ]) {
+    const h = await fixture(body);
+    try {
+      await h.page.waitForTimeout(200);
+      assert.equal(await h.page.locator("#aio").isVisible(), false, where);
+      assert.equal(await h.page.locator("#center_col").isVisible(), true, where);
+      assert.equal(await h.page.getByText("Regular result").isVisible(), true, where);
+      assert.deepEqual(h.errors, []);
+    } finally { await h.close(); }
+  }
+});
+
+test("a visible role=main region outside an AI Mode frame still keeps a headed block visible", async () => {
+  const h = await fixture('<div id="rcnt"><div id="mixed"><div role="heading">AI Overview</div><div role="main" id="real">Results</div></div><div id="center_col"></div></div>');
+  try {
+    await h.page.waitForTimeout(200);
+    assert.equal(await h.page.locator("#mixed").isVisible(), true);
+    assert.equal(await h.page.locator("#real").isVisible(), true);
+  } finally { await h.close(); }
+});
+
+// "People also ask": each question item carries data-q and data-lk, and a wrapper
+// inside it holds both the expand toggle and the answer. An opened answer can be
+// an AI Overview. Only that answer goes.
+const QUESTION_ITEM = (n, answer) => `<div jsname="yEVEwb"><div data-q="Question ${n}?" data-lk="x"><div class="wrap"><div><div role="button" aria-expanded="${answer ? "true" : "false"}" id="q${n}">Question ${n}?</div></div><div><div id="a${n}">${answer || ""}</div></div></div></div></div>`;
+const AI_ANSWER = '<div class="answer"><div><div role="heading" aria-level="3">AI Overview</div></div><div style="height:200px">AI answer</div></div>';
+
+test("an AI Overview answer in People also ask hides, while the questions stay", async () => {
+  const h = await fixture(`<div id="rcnt"><div id="center_col" role="main"><div id="search"><div id="rso"><div id="paa"><div role="heading">People also ask</div>${QUESTION_ITEM(1, AI_ANSWER)}${QUESTION_ITEM(2)}</div><div><h3>Regular result</h3></div></div></div></div></div>`);
+  try {
+    await h.page.waitForTimeout(200);
+    assert.equal(await h.page.locator("#a1 .answer").isVisible(), false);
+    for (const id of ["paa", "q1", "q2"]) assert.equal(await h.page.locator("#" + id).isVisible(), true, id);
+    assert.equal(await h.page.getByText("People also ask").isVisible(), true);
+    assert.deepEqual(h.errors, []);
+  } finally { await h.close(); }
+});
+
+test("a People also ask answer with no toggle before it is left visible", async () => {
+  const h = await fixture(`<div id="rcnt"><div id="center_col" role="main"><div id="search"><div id="rso"><div data-q="Question?" data-lk="x"><div id="answer">${AI_ANSWER}</div><div id="q" role="button" aria-expanded="true">Question?</div></div></div></div></div></div>`);
+  try {
+    await h.page.waitForTimeout(200);
+    assert.equal(await h.page.locator("#answer .answer").isVisible(), true);
+    assert.equal(await h.page.locator("#q").isVisible(), true);
+  } finally { await h.close(); }
+});
+
+test("a People also ask answer opened after scrolling hides without moving the page", async () => {
+  const h = await fixture(`<div id="rcnt"><div id="center_col" role="main"><div id="search"><div id="rso"><div style="height:1500px">Earlier results</div><div id="paa">${QUESTION_ITEM(1)}${QUESTION_ITEM(2)}</div><div style="height:3000px">Later results</div></div></div></div></div>`, { start: false });
+  try {
+    await h.page.evaluate(() => window.scrollTo(0, 1200));
+    await h.page.addScriptTag({ path: path.join(root, "content/content.js") });
+    await h.page.waitForTimeout(200);
+    await h.page.evaluate(answer => { document.querySelector("#a1").innerHTML = answer; }, AI_ANSWER);
+    await h.page.waitForTimeout(300);
+    assert.equal(await h.page.locator("#a1 .answer").isVisible(), false);
+    assert.equal(await h.page.locator("#q1").isVisible(), true);
+    assert.equal(await h.page.evaluate(() => window.scrollY), 1200);
+    // An answer above the top of the viewport is left alone: removing it would
+    // pull the text being read upward. (Chrome's scroll anchoring absorbs its growth.)
+    await h.page.evaluate(() => window.scrollTo(0, 2200));
+    await h.page.evaluate(answer => { document.querySelector("#a2").innerHTML = answer; }, AI_ANSWER);
+    await h.page.waitForTimeout(300);
+    assert.equal(await h.page.locator("#a2 .answer").isVisible(), true);
+    assert.deepEqual(h.errors, []);
+  } finally { await h.close(); }
+});
+
+test("the AI Mode button in Google's search box hides; other search box buttons stay", async () => {
+  for (const url of ["https://www.google.com/", "https://www.google.com/search?q=test"]) {
+    const h = await fixture('<form action="/search" role="search"><input name="q"><button id="voice" type="button" aria-label="Search by voice"></button><button id="ai" type="button" role="link"><div><span>AI Mode</span></div></button><button id="submit" type="submit">Google Search</button></form><div id="rso"><button id="outside">AI Mode</button></div>', { url });
+    try {
+      assert.equal(await h.page.locator("#ai").isVisible(), false, url);
+      for (const id of ["voice", "submit", "outside"]) assert.equal(await h.page.locator("#" + id).isVisible(), true, id + " " + url);
+    } finally { await h.close(); }
+  }
+});
+
 test("an AI Overview heading next to a visible result heading is left visible", async () => {
   const h = await fixture('<div id="rcnt"><div id="mixed"><div role="heading">AI Overview</div><h3>Regular result</h3></div><div id="center_col"></div></div>');
   try {
